@@ -62,18 +62,3 @@ defined('_JEXEC') or die('Restricted access');
         echo $this->data['order_statuses']->display('data[payment][payment_params][verified_status]', @$this->element->payment_params->verified_status);
     ?></td>
 </tr>
-<tr>
-    <td colspan="2">
-        <p class="alert alert-info">do you want to use zarinpal sandbox?</p>
-    </td>
-</tr>
-<tr>
-    <td class="key">
-        <label for="data[payment][payment_params][sandbox]"><?php
-            echo JText::_('sandbox ');
-            ?></label>
-    </td>
-    <td>
-        <input type="checkbox" name="data[payment][payment_params][sandbox]" <?php echo $this->escape(@$this->element->payment_params->sandbox)? 'checked' : ''; ?> value="1" />
-    </td>
-</tr>
