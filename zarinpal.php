@@ -30,68 +30,73 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
     public function onAfterOrderConfirm(&$order, &$methods, $method_id)
     {
         parent::onAfterOrderConfirm($order, $methods, $method_id);
-        try {
-            if ($this->payment_params->sandbox)
-                $client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
+
+        $usergroupsids = "usergroup:" . json_encode(JAccess::getGroupsByUser($this->user->id));/*added by mjt to send more description to zarinpal logs*/
+        if ($this->user) {
+            if (is_array($usergroupsids))
+                $customdesc = $this->user->name . " آیدی کاربر: " . $this->user->id . " نام کاربری:" . $this->user->username . " آیدی های گروه های کاربری " . json_encode($usergroupsids);
             else
-                $client = new SoapClient('https://zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
-
-        } catch (SoapFault $ex) {
-            die('System Error1: constructor error');
+                $customdesc = $this->user->name . " آیدی کاربر: " . $this->user->id . " نام کاربری:" . $this->user->username . " آیدی های گروه های کاربری " . $usergroupsids;
+        } else {
+            $customdesc = "کاربر میهمان";
         }
-        try {
-            // $usergroupsids=print_r(JAccess::getGroupsByUser($this->user->id),"usergroup", True);/*added by mjt to send more description to zarinpal logs*/
-            $usergroupsids = "usergroup:" . json_encode(JAccess::getGroupsByUser($this->user->id));/*added by mjt to send more description to zarinpal logs*/
-            if ($this->user) {
-                if (is_array($usergroupsids))
-                    $customdesc = $this->user->name . " آیدی کاربر: " . $this->user->id . " نام کاربری:" . $this->user->username . " آیدی های گروه های کاربری " . json_encode($usergroupsids);
-                else
-                    $customdesc = $this->user->name . " آیدی کاربر: " . $this->user->id . " نام کاربری:" . $this->user->username . " آیدی های گروه های کاربری " . $usergroupsids;
+        /*added by mjt */
+        $callBackUrl = HIKASHOP_LIVE . 'index.php?option=com_hikashop&ctrl=checkout&task=notify&notif_payment=' . $this->name . '&tmpl=component&lang=' . $this->locale . $this->url_itemid . '&orderID=' . $order->order_id;
+        $Description = 'سفارش شماره: ' . $order->order_id . "\nبیشتر:" . "$customdesc";
+        if (extension_loaded('mbstring'))
+            $Description = (strlen($Description) > 490) ? mb_substr($Description, 0, 440) . 'طول اطلاعات زیاد است' : $Description;
+        else
+            $Description = (strlen($Description) > 490) ? substr($Description, 0, 440) . 'طول اطلاعات زیاد است' : $Description;
+        $amount = round($order->cart->full_total->prices[0]->price_value_with_tax, (int)$this->currency->currency_locale['int_frac_digits']);
+        $filename = __DIR__ . "/zarinlog.txt";
+        $Description .= "\n";
+        $Description .= " محصول: ";
+        $Description .= current($order->cart->products)->order_product_code;
+        file_put_contents($filename, "Description = " . print_r($Description, true) . "\n", FILE_APPEND);
+
+
+        $user = JFactory::getUser();
+        $email = $user->get('email', 'guest@gmail.com');
+
+        $parameters = [
+            'merchant_id' => $this->payment_params->merchant,
+            'amount' => $amount,
+            'description' => $Description,
+            'callback_url' => $callBackUrl,
+            'metadata' => ["email" => $email]
+        ];
+
+//        $username = $user->get('username', 'guest');
+//        $parameters['metadata']['mobile']= $username;
+
+        $jsonData = json_encode($parameters);
+        $ch = curl_init('https://api.zarinpal.com/pg/v4/payment/request.json');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'ZarinPal Rest Api v1');
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($jsonData)
+        ));
+        $result = curl_exec($ch);
+        $err = curl_error($ch);
+        $result = json_decode($result, true, JSON_PRETTY_PRINT);
+        curl_close($ch);
+
+        if ($err) {
+            echo "cURL Error #:" . $err;
+        } else {
+            if (empty($result['errors'])) {
+                if ($result['data']['code'] == 100) {
+                    header('Location: https://www.zarinpal.com/pg/StartPay/' . $result['data']["authority"]);
+                }
             } else {
-                $customdesc = "کاربر میهمان";
+                echo 'Error Code: ' . $result['errors']['code'];
+                echo 'message: ' . $result['errors']['message'];
+
             }
-            /*added by mjt */
-            $callBackUrl = HIKASHOP_LIVE . 'index.php?option=com_hikashop&ctrl=checkout&task=notify&notif_payment=' . $this->name . '&tmpl=component&lang=' . $this->locale . $this->url_itemid . '&orderID=' . $order->order_id;
-            $Description = 'سفارش شماره: ' . $order->order_id . "\nبیشتر:" . "$customdesc";
-            if (extension_loaded('mbstring'))
-                $Description = (strlen($Description) > 490) ? mb_substr($Description, 0, 440) . 'طول اطلاعات زیاد است' : $Description;
-            else
-                $Description = (strlen($Description) > 490) ? substr($Description, 0, 440) . 'طول اطلاعات زیاد است' : $Description;
-            $amount = round($order->cart->full_total->prices[0]->price_value_with_tax, (int)$this->currency->currency_locale['int_frac_digits']);
-            $filename = __DIR__ . "/zarinlog.txt";
-            $Description .= "\n";
-            $Description .= " درس: ";
-            $Description .= current($order->cart->products)->order_product_code;
-            file_put_contents($filename, "Description = " . print_r($Description, true) . "\n", FILE_APPEND);
-
-            $parameters = [
-                'MerchantID' => $this->payment_params->merchant,
-                'Amount' => $amount,
-                'Email' => '',
-                'Description' => $Description,
-                'Mobile' => '',
-                'CallbackURL' => $callBackUrl,
-            ];
-
-            $result = $client->PaymentRequest($parameters);
-
-            if ($result->Status == 100) {
-                if ($this->payment_params->sandbox)
-                    $this->payment_params->url = 'https://sandbox.zarinpal.com/pg/StartPay/' . $result->Authority . '/ZarinGate';
-                else
-                    $this->payment_params->url = 'https://zarinpal.com/pg/StartPay/' . $result->Authority . '/ZarinGate';
-
-                return $this->showPage('end');
-            } else {
-                echo "<p align=center>Bank Error $result->Status.<br />Order UNSUCCSESSFUL!</p>";
-                exit;
-                die;
-            }
-        } catch (SoapFault $ex) {
-
-            die('System Error3: error in get data from bank');
         }
-
     }
 
     public function onPaymentNotification(&$statuses)
@@ -123,6 +128,7 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
         else
             $cancel_url = HIKASHOP_LIVE . 'index.php?option=com_hikashop&ctrl=order&order_id=' . $order_id;
 
+        
         $order_text = "\r\n" . JText::sprintf('NOTIFICATION_OF_ORDER_ON_WEBSITE', $dbOrder->order_number, HIKASHOP_LIVE);
         $order_text .= "\r\n" . str_replace('<br/>', "\r\n", JText::sprintf('ACCESS_ORDER_WITH_LINK', $url));
 
@@ -132,31 +138,42 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
             $history->amount = round($dbOrder->order_full_price, (int)$this->currency->currency_locale['int_frac_digits']);
             $history->data = ob_get_clean();
 
-            try {
-                $client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
-            } catch (SoapFault $ex) {
-                die('System Error1: constructor error');
-            }
-            try {
-                $msg = '';
-                $parameters = [
-                    'MerchantID' => $this->payment_params->merchant,
-                    'Authority' => $_GET['Authority'],
-                    'Amount' => $history->amount,
-                ];
-                $result = $client->PaymentVerification($parameters);
-                if ($result->Status == 100) {
+
+            $msg = '';
+            $Authority = $_GET['Authority'];
+            $data = array("merchant_id" => $this->payment_params->merchant, "authority" => $Authority, "amount" => $history->amount);
+            $jsonData = json_encode($data);
+            $ch = curl_init('https://api.zarinpal.com/pg/v4/payment/verify.json');
+            curl_setopt($ch, CURLOPT_USERAGENT, 'ZarinPal Rest Api v4');
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($jsonData)
+            ));
+
+            $result = curl_exec($ch);
+            $err = curl_error($ch);
+            curl_close($ch);
+            $result = json_decode($result, true);
+
+            if ($err) {
+                echo "cURL Error #:" . $err;
+            } else {
+                if ($result['data']['code'] == 100) {
                     $order_status = $this->payment_params->verified_status;
                     $msg = 'پرداخت شما با موفقیت انجام شد.';
+                    JFactory::getApplication()->enqueueMessage($msg, 'success');
                     $dest_url = $return_url;
                 } else {
-                    $order_status = $this->payment_params->pending_status;
+                    $order_status = $this->payment_params->invalid_status;
                     $order_text = JText::sprintf('CHECK_DOCUMENTATION', HIKASHOP_HELPURL . 'payment-zarinpal-error#verify') . "\r\n\r\n" . $order_text;
-                    $msg = $this->getStatusMessage($result->Status);
+//                    $msg = 'code: ' . $result['errors']['code'].' message: ' .  $result['errors']['message'];
+                    $msg= 'پرداخت شما انجام نشد';
+                    JFactory::getApplication()->enqueueMessage($msg, 'error');
                     $dest_url = $cancel_url;
                 }
-            } catch (SoapFault $ex) {
-                die('System Error2: error in get data from bank');
             }
 
             $config = &hikashop_config();
