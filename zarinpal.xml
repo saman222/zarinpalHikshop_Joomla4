@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension type="plugin" version="3.5" method="upgrade" group="hikashoppayment">
+<extension type="plugin" version="4" method="upgrade" group="hikashoppayment">
 	<name>Hikashop Zarinpal Payment Gateway implemented by Lmskaran</name>
 	<version>1.0</version>
 	<creationDate>2022/01/22</creationDate>
