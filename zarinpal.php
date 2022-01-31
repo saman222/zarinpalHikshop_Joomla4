@@ -48,11 +48,12 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
         else
             $Description = (strlen($Description) > 490) ? substr($Description, 0, 440) . 'طول اطلاعات زیاد است' : $Description;
         $amount = round($order->cart->full_total->prices[0]->price_value_with_tax, (int)$this->currency->currency_locale['int_frac_digits']);
-        $filename = __DIR__ . "/zarinlog.txt";
+        if ($this->currency->currency_code== 'IRT' || $this->currency->currency_code== 'TOM')
+            $amount= (int)$amount * 10;
+
         $Description .= "\n";
         $Description .= " محصول: ";
         $Description .= current($order->cart->products)->order_product_code;
-        file_put_contents($filename, "Description = " . print_r($Description, true) . "\n", FILE_APPEND);
 
 
         $user = JFactory::getUser();
@@ -65,7 +66,6 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
             'callback_url' => $callBackUrl,
             'metadata' => ["email" => $email]
         ];
-
 //        $username = $user->get('username', 'guest');
 //        $parameters['metadata']['mobile']= $username;
 
