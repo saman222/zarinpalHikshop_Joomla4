@@ -136,6 +136,8 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
             $history = new stdClass();
             $history->notified = 0;
             $history->amount = round($dbOrder->order_full_price, (int)$this->currency->currency_locale['int_frac_digits']);
+            if ($this->currency->currency_code== 'IRT' || $this->currency->currency_code== 'TOM')
+                $history->amount= (int)$history->amount * 10;
             $history->data = ob_get_clean();
 
 
