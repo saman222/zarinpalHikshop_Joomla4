@@ -170,8 +170,6 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
                     $type = 'success';
                     JFactory::getApplication()->enqueueMessage($msg, $type);
                     $dest_url = $return_url;
-                    $cartClass = hikashop_get('class.cart');
-                    $cartClass->cleanCartFromSession();
                 } else {
                     $order_status = $this->payment_params->invalid_status;
                     $order_text = JText::sprintf('CHECK_DOCUMENTATION', HIKASHOP_HELPURL . 'payment-zarinpal-error#verify') . "\r\n\r\n" . $order_text;
@@ -190,6 +188,11 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
             $email = new stdClass();
             $email->subject = JText::sprintf('PAYMENT_NOTIFICATION_FOR_ORDER', 'Zarinpal', $order_status, $dbOrder->order_number);
             $email->body = str_replace('<br/>', "\r\n", JText::sprintf('PAYMENT_NOTIFICATION_STATUS', 'Zarinpal', $order_status)) . ' ' . JText::sprintf('ORDER_STATUS_CHANGED', $order_status) . "\r\n\r\n" . $order_text;
+            if (!$err && $result['data']['code'] == 100)
+            {
+                $cartClass = hikashop_get('class.cart');
+                $cartClass->cleanCartFromSession();
+            }
             $this->modifyOrder($order_id, $order_status, $history, $email);
         } else {
             $order_status = $this->payment_params->invalid_status;
