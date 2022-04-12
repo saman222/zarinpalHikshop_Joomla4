@@ -196,12 +196,14 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
             $this->modifyOrder($order_id, $order_status, null, $email);
             $dest_url = $cancel_url;
         }
-        if (headers_sent()) {
-            die('<script type="text/javascript">window.location.href="' . $dest_url . '";</script>');
-        } else {
-            header('location: ' . $dest_url);
-            die();
-        }
+//         if (headers_sent()) {
+//             die('<script type="text/javascript">window.location.href="' . $dest_url . '";</script>');
+//         } else {
+//             header('location: ' . $dest_url);
+//             die();
+//         }
+        $app = JFactory::getApplication();
+        $app->redirect(JRoute::_($dest_url, false), $msg, $type);
         exit;
     }
 
