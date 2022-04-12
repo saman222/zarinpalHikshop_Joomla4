@@ -142,6 +142,7 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
 
 
             $msg = '';
+            $type = 'error';
             $Authority = $_GET['Authority'];
             $data = array("merchant_id" => $this->payment_params->merchant, "authority" => $Authority, "amount" => $history->amount);
             $jsonData = json_encode($data);
@@ -166,8 +167,11 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
                 if ($result['data']['code'] == 100) {
                     $order_status = $this->payment_params->verified_status;
                     $msg = 'پرداخت شما با موفقیت انجام شد.';
-                    JFactory::getApplication()->enqueueMessage($msg, 'success');
+                    $type = 'success';
+                    JFactory::getApplication()->enqueueMessage($msg, $type);
                     $dest_url = $return_url;
+                    $cartClass = hikashop_get('class.cart');
+                    $cartClass->cleanCartFromSession();
                 } else {
                     $order_status = $this->payment_params->invalid_status;
                     $order_text = JText::sprintf('CHECK_DOCUMENTATION', HIKASHOP_HELPURL . 'payment-zarinpal-error#verify') . "\r\n\r\n" . $order_text;
