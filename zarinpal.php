@@ -131,7 +131,8 @@ class plgHikashoppaymentZarinpal extends hikashopPaymentPlugin
         
         $order_text = "\r\n" . JText::sprintf('NOTIFICATION_OF_ORDER_ON_WEBSITE', $dbOrder->order_number, HIKASHOP_LIVE);
         $order_text .= "\r\n" . str_replace('<br/>', "\r\n", JText::sprintf('ACCESS_ORDER_WITH_LINK', $url));
-
+        if($dbOrder->order_status == $this->payment_params->verified_status)
+        return;    //added to remove some bug for order some times have multi history that ended with 
         if (!empty($_GET['Authority'])) {
             $history = new stdClass();
             $history->notified = 0;
